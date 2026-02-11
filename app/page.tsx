@@ -5,11 +5,7 @@ import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Phone, Calendar, Send, User, Clock, Eye, X, ImageIcon, Map, Box, Loader2 } from "lucide-react";
 
-// --- Firebase Imports ---
-import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "firebase/firestore";
-import { db } from "./firebaseConfig"; // ตรวจสอบว่าไฟล์นี้มีอยู่จริงและ config ถูกต้อง
-
-// --- Type Definitions for Model Viewer ---
+// --- Type Definitions for Model Viewer (เพื่อให้ TS ไม่แจ้งเตือน) ---
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -29,7 +25,7 @@ declare global {
         'camera-orbit'?: string;
         'interaction-prompt-threshold'?: string;
         style?: React.CSSProperties;
-        'on-load'?: () => void; // เพิ่ม event listener
+        'on-load'?: () => void;
       }, HTMLElement>;
     }
   }
@@ -43,7 +39,7 @@ const graduateInfo = {
   year: "ปีการศึกษา 2568",
   phone: "097-178-4484",
   lineId: "phu20453.",
-  imageProfile: "/graduate-profile.jpg",
+  imageProfile: "/graduate-profile.jpg", // รูปโปรไฟล์ (ต้องมี / ข้างหน้าถ้าอยู่ใน public)
 };
 
 // --- กำหนดการ ---
@@ -86,15 +82,15 @@ const staggerContainer = {
 };
 
 export default function Home() {
-  // State Management
-  const [comments, setComments] = useState<{ id: string; name: string; msg: string }[]>([]);
+  const [comments, setComments] = useState<{ name: string; msg: string }[]>([]);
   const [inputName, setInputName] = useState("");
   const [inputMsg, setInputMsg] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // State สำหรับเช็คว่าโมเดลโหลดเสร็จหรือยัง
   const [isModelLoaded, setIsModelLoaded] = useState(false);
 
-  // --- Load Model Viewer Script ---
+  // --- Load Model Viewer Script (จำเป็นสำหรับแสดงโมเดล) ---
   useEffect(() => {
     const script = document.createElement("script");
     script.type = "module";
@@ -103,19 +99,6 @@ export default function Home() {
     return () => {
         if(document.body.contains(script)) document.body.removeChild(script);
     };
-  }, []);
-
-  // --- Fetch Firebase Data ---
-  useEffect(() => {
-    const q = query(collection(db, "wishes"), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const loadedComments: any[] = [];
-      querySnapshot.forEach((doc) => {
-        loadedComments.push({ id: doc.id, ...doc.data() });
-      });
-      setComments(loadedComments);
-    });
-    return () => unsubscribe();
   }, []);
 
   const fireFormalConfetti = () => {
@@ -128,31 +111,20 @@ export default function Home() {
     })();
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputName || !inputMsg) return;
-
-    setIsSubmitting(true);
-    try {
-      await addDoc(collection(db, "wishes"), {
-        name: inputName,
-        msg: inputMsg,
-        createdAt: serverTimestamp()
-      });
-      fireFormalConfetti();
-      setInputName("");
-      setInputMsg("");
-    } catch (error) {
-      console.error("Error adding document: ", error);
-      alert("ส่งข้อความไม่สำเร็จ โปรดลองใหม่");
-    }
-    setIsSubmitting(false);
+    // (ตรงนี้ถ้าจะต่อ Firebase ให้เอาโค้ด Firebase มาใส่นะครับ)
+    setComments([{ name: inputName, msg: inputMsg }, ...comments]);
+    fireFormalConfetti();
+    setInputName("");
+    setInputMsg("");
   };
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-800 font-sans">
       
-      {/* --- Modal Popup (สำหรับดูรูป) --- */}
+      {/* --- Modal Popup --- */}
       <AnimatePresence>
         {selectedImage && (
           <motion.div 
@@ -177,7 +149,7 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* --- Header Section --- */}
+      {/* --- Header Section (เอารูปกลับมาแล้ว) --- */}
       <header className="bg-slate-900 text-white relative overflow-hidden">
         <div className="max-w-6xl mx-auto px-6 py-20 md:py-32 grid md:grid-cols-2 gap-12 items-center relative z-10">
           
@@ -197,43 +169,23 @@ export default function Home() {
             </motion.div>
           </motion.div>
 
-          {/* Right: 3D Model Viewer (using Rewrites to fix CORS/Size) */}
-          <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, delay: 0.2 }} className="relative h-[400px] w-full">
-            <div className="absolute inset-0 bg-gradient-to-t from-slate-800 to-slate-800/20 rounded-xl border border-slate-700 shadow-2xl overflow-hidden flex items-center justify-center">
-                
-                {/* Loading State */}
-                {!isModelLoaded && (
-                  <div className="absolute z-0 flex flex-col items-center text-slate-500 animate-pulse">
-                     <Loader2 className="w-10 h-10 animate-spin mb-2" />
-                     <p className="text-xs">Loading 3D Model...</p>
-                  </div>
-                )}
-
-                {/* Model Viewer Component */}
-                <model-viewer 
-                    src="/api/model-glb"        // ใช้ Path ที่ Rewrite แล้ว
-                    ios-src="/api/model-usdz"   // ใช้ Path ที่ Rewrite แล้ว
-                    camera-controls 
-                    ar 
-                    ar-modes="scene-viewer quick-look webxr" 
-                    auto-rotate 
-                    shadow-intensity="1" 
-                    touch-action="pan-y"
-                    min-camera-orbit="auto auto 1m" 
-                    max-camera-orbit="auto 90deg auto" 
-                    camera-orbit="20deg 85deg 1725m" 
-                    interaction-prompt-threshold="500" 
-                    alt="3D model of a car"
-                    // @ts-ignore
-                    on-load={() => setIsModelLoaded(true)} 
-                    style={{ width: '100%', height: '100%', backgroundColor: 'transparent', position: 'relative', zIndex: 10 }}
-                >
-                  <div slot="ar-button" className="absolute bottom-4 right-4 bg-white text-slate-900 px-4 py-2 rounded-full font-bold text-sm shadow-lg cursor-pointer flex items-center gap-2 hover:bg-yellow-400 transition-colors">
-                    <Box size={16} /> View AR
-                  </div>
-                </model-viewer>
+          {/* Right: Profile Image (กลับมาแล้ว!) */}
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.8, rotate: -5 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ duration: 1, delay: 0.2 }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-yellow-500 rounded-lg transform translate-x-4 translate-y-4 -z-10 hidden md:block"></div>
+            <div className="aspect-[3/4] overflow-hidden rounded-lg shadow-2xl border-4 border-slate-800 relative group">
+              <img 
+                src={graduateInfo.imageProfile}
+                alt="Graduate Profile" 
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              />
+              {/* Overlay เงาๆ เพิ่มมิติ */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 to-transparent opacity-60"></div>
             </div>
-            <p className="text-center text-slate-400 text-xs mt-3">* หมุนดูโมเดล 3D หรือกดปุ่ม AR เพื่อวางรถบนพื้นจริง</p>
           </motion.div>
         </div>
 
@@ -241,6 +193,60 @@ export default function Home() {
         <motion.div animate={{ scale: [1, 1.2, 1] }} transition={{ repeat: Infinity, duration: 8 }} className="absolute top-0 right-0 w-64 h-64 bg-yellow-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2"></motion.div>
         <motion.div animate={{ scale: [1, 1.3, 1] }} transition={{ repeat: Infinity, duration: 10, delay: 1 }} className="absolute bottom-0 left-0 w-96 h-96 bg-blue-900/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2"></motion.div>
       </header>
+
+      {/* --- NEW SECTION: 3D Model Showcase (ย้ายมาตรงนี้) --- */}
+      <section className="bg-slate-100 py-16 px-6 relative z-20 border-b border-slate-200">
+          <div className="max-w-5xl mx-auto">
+             <div className="text-center mb-10">
+                <h2 className="text-3xl font-serif font-bold text-slate-900 relative inline-block pb-3">
+                  Model 3D มหาวิทยาลัย 
+                  <motion.span initial={{ width: 0 }} whileInView={{ width: "100%" }} transition={{ duration: 1 }} className="absolute bottom-0 left-0 h-1 bg-yellow-500"></motion.span>
+                </h2>
+                <p className="text-slate-600 mt-4 font-medium">CPE Senior Project Showcase</p>
+              </div>
+
+              {/* The 3D Model Container */}
+              <motion.div
+                 initial={{ opacity: 0, y: 50 }}
+                 whileInView={{ opacity: 1, y: 0 }}
+                 transition={{ duration: 0.8 }}
+                 className="relative h-[500px] w-full bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex items-center justify-center"
+              >
+                  {/* Loading State */}
+                  {!isModelLoaded && (
+                    <div className="absolute z-0 flex flex-col items-center text-slate-500 animate-pulse">
+                       <Loader2 className="w-10 h-10 animate-spin mb-2" />
+                       <p className="text-sm font-medium">กำลังโหลดโมเดล 3D...</p>
+                    </div>
+                  )}
+
+                  {/* Model Viewer Component */}
+                  <model-viewer 
+                      src="/api/model-glb"        // ใช้ Path ที่ Rewrite แล้ว
+                      ios-src="/api/model-usdz"   // ใช้ Path ที่ Rewrite แล้ว
+                      camera-controls 
+                      ar 
+                      ar-modes="scene-viewer quick-look webxr" 
+                      auto-rotate 
+                      shadow-intensity="1" 
+                      touch-action="pan-y"
+                      min-camera-orbit="auto auto 1m" 
+                      max-camera-orbit="auto 90deg auto" 
+                      camera-orbit="20deg 85deg 1725m" 
+                      interaction-prompt-threshold="500" 
+                      alt="3D model of a car"
+                      // @ts-ignore
+                      on-load={() => setIsModelLoaded(true)} 
+                      style={{ width: '100%', height: '100%', backgroundColor: 'transparent', position: 'relative', zIndex: 10 }}
+                  >
+                    <div slot="ar-button" className="absolute bottom-4 right-4 bg-white text-slate-900 px-4 py-2 rounded-full font-bold text-sm shadow-lg cursor-pointer flex items-center gap-2 hover:bg-yellow-400 transition-colors">
+                      <Box size={16} /> View AR
+                    </div>
+                  </model-viewer>
+              </motion.div>
+              <p className="text-center text-slate-500 text-sm mt-4">* สามารถหมุนดูโมเดล 3D หรือกดปุ่ม AR บนมือถือเพื่อวางรถบนพื้นจริงได้</p>
+          </div>
+      </section>
 
       {/* --- Schedule Section --- */}
       <section id="schedule" className="max-w-4xl mx-auto px-6 py-20">
@@ -276,23 +282,18 @@ export default function Home() {
       {/* --- Location Section --- */}
       <motion.section initial={{ opacity: 0, y: 50 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.8 }} className="bg-slate-100 py-20 px-6">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12">
-          
-          {/* Map & Buttons */}
           <div>
             <h3 className="text-2xl font-serif font-bold text-slate-900 mb-6 flex items-center gap-2"><MapPin className="text-slate-900" /> แผนที่การเดินทาง</h3>
             <div className="h-80 bg-slate-300 rounded-lg shadow-md overflow-hidden border border-slate-200 relative group">
-              <iframe src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3875.792984594368!2d100.5309483141427!3d13.730994990361092!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x30e29f2a0e4b4b2f%3A0x2b0b0b0b0b0b0b0b!2sChulalongkorn%20University!5e0!3m2!1sen!2sth!4v1620000000000!5m2!1sen!2sth" width="100%" height="100%" style={{ border: 0 }} allowFullScreen={true} loading="lazy" className="grayscale group-hover:grayscale-0 transition-all duration-500"></iframe>
+              <iframe src="
+https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3874.346280006492!2d100.5096033759347!3d13.81823348658059!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x30e29b9f54b53151%3A0x73d2b2a69752fd89!2z4Lio4Li54LiZ4Lii4LmM4Lie4Lij4Liw4LiZ4LiE4Lij4LmA4Lir4LiZ4Li34LitIOC4oeC4q-C4suC4p-C4tOC4l-C4ouC4suC4peC4seC4ouC5gOC4l-C4hOC5guC4meC5guC4peC4ouC4teC4o-C4suC4iuC4oeC4h-C4hOC4peC4nuC4o-C4sOC4meC4hOC4ow!5e0!3m2!1sth!2sth!4v1770817997114!5m2!1sth!2sth" width="100%" height="100%" style={{ border: 0 }} allowFullScreen={true} loading="lazy" className="grayscale group-hover:grayscale-0 transition-all duration-500"></iframe>
             </div>
-            
-            {/* Map Buttons 1 & 2 */}
             <div className="grid grid-cols-2 gap-4 mt-4">
                <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setSelectedImage("/1.jpg")} className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded shadow-sm hover:border-yellow-500 hover:text-yellow-600 transition-colors text-sm font-bold text-slate-700"><Map size={18} /> แผนที่ภายใน (1)</motion.button>
                <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setSelectedImage("/2.jpg")} className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded shadow-sm hover:border-yellow-500 hover:text-yellow-600 transition-colors text-sm font-bold text-slate-700"><Map size={18} /> แผนที่ภายใน (2)</motion.button>
             </div>
             <p className="mt-4 text-slate-600 text-sm leading-relaxed">* แนะนำให้ใช้บริการรถสาธารณะเนื่องจากการจราจรภายในมหาวิทยาลัยหนาแน่น</p>
           </div>
-
-          {/* Contact Card */}
           <div className="flex flex-col justify-center">
             <div className="bg-white p-8 rounded-lg shadow-lg border-t-4 border-yellow-500 transform hover:-translate-y-2 transition-transform duration-300">
               <h3 className="text-2xl font-serif font-bold text-slate-900 mb-6">ข้อมูลติดต่อ</h3>
@@ -314,18 +315,18 @@ export default function Home() {
               <div className="space-y-2"><label className="text-sm font-semibold text-slate-700">ชื่อ - นามสกุล</label><input type="text" required className="w-full p-3 bg-slate-50 border border-slate-300 rounded-sm focus:outline-none focus:border-slate-900 transition-colors" placeholder="ระบุชื่อของท่าน" value={inputName} onChange={(e) => setInputName(e.target.value)} /></div>
               <div className="space-y-2"><label className="text-sm font-semibold text-slate-700">ข้อความอวยพร</label><input type="text" required className="w-full p-3 bg-slate-50 border border-slate-300 rounded-sm focus:outline-none focus:border-slate-900 transition-colors" placeholder="ขอแสดงความยินดี..." value={inputMsg} onChange={(e) => setInputMsg(e.target.value)} /></div>
             </div>
-            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" disabled={isSubmitting} className="w-full md:w-auto px-8 py-3 bg-slate-900 text-white font-medium rounded-sm hover:bg-slate-800 transition-all flex items-center justify-center gap-2 mx-auto shadow-lg disabled:opacity-50">
-              <Send size={16} /> {isSubmitting ? "กำลังส่ง..." : "แสดงความยินดีกับบัณฑิต"}
+            <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} type="submit" className="w-full md:w-auto px-8 py-3 bg-slate-900 text-white font-medium rounded-sm hover:bg-slate-800 transition-all flex items-center justify-center gap-2 mx-auto shadow-lg">
+              <Send size={16} /> แสดงความยินดีกับบัณฑิต
             </motion.button>
           </form>
           <div className="border-t border-slate-200 pt-8">
             <h3 className="font-serif font-bold text-lg mb-6 text-slate-800">รายนามคนร่วมแสดงความยินดี ({comments.length})</h3>
             {comments.length === 0 ? (
-              <p className="text-center text-slate-400 py-8 font-light italic">ยังไม่มีข้อความ (เป็นคนแรกเลยไหม!)</p>
+              <p className="text-center text-slate-400 py-8 font-light italic">ยังไม่มีข้อความ</p>
             ) : (
               <ul className="space-y-0 divide-y divide-slate-100">
-                {comments.map((c) => (
-                  <motion.li key={c.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="py-4 flex gap-4 items-start">
+                {comments.map((c, i) => (
+                  <motion.li key={i} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className="py-4 flex gap-4 items-start">
                     <div className="mt-1 w-2 h-2 bg-yellow-500 rounded-full shrink-0 shadow-[0_0_8px_rgba(234,179,8,0.8)]"></div>
                     <div><p className="font-bold text-slate-900 text-sm">{c.name}</p><p className="text-slate-600 mt-1 font-light">"{c.msg}"</p></div>
                   </motion.li>

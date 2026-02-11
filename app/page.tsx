@@ -222,8 +222,8 @@ export default function Home() {
 
                   {/* Model Viewer Component */}
                   <model-viewer 
-                      src="/api/model-glb"        // ใช้ Path ที่ Rewrite แล้ว
-                      ios-src="/api/model-usdz"   // ใช้ Path ที่ Rewrite แล้ว
+                      src="/api/model-glb"        
+                      ios-src="/api/model-usdz"   
                       camera-controls 
                       ar 
                       ar-modes="scene-viewer quick-look webxr" 

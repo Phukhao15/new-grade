@@ -45,7 +45,7 @@ const graduateInfo = {
   year: "ปีการศึกษา 2567",
   phone: "097-178-4484",
   lineId: "phu20453.",
-  imageProfile: "/graduate-profile2.jpg",
+  imageProfile: "/graduate-profile2.JPG",
 };
 
 const schedule = [
@@ -57,6 +57,7 @@ const schedule = [
     note: "จอดรถได้ที่ บริษัท CPAC (ใกล้มหาวิทยาลัย)",
     imageMap: "/small.jpg",
   },
+  
   {
     type: "วันซ้อมใหญ่",
     date: "11 มีนาคม 2569",

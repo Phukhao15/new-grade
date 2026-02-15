@@ -5,14 +5,15 @@ import confetti from "canvas-confetti";
 import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, Phone, Calendar, Send, User, Clock, Eye, X, ImageIcon, Map, Box, Loader2, MessageSquareQuote } from "lucide-react";
 
-// ✅ 1. เพิ่ม Import SweetAlert2
+// ✅ Import SweetAlert2
 import Swal from 'sweetalert2';
 
-// ✅ 2. Import Firebase
+// ✅ Import Firebase
 import { collection, addDoc, onSnapshot, query, orderBy, serverTimestamp } from "firebase/firestore";
-import { db } from "./firebaseConfig"; // ⚠️ ตรวจสอบว่าชื่อไฟล์ตรงกับในเครื่องนะครับ (firebaseConfig.ts หรือ fire.ts)
+import { db } from "./firebaseConfig"; 
+// ⚠️ หมายเหตุ: ถ้าไฟล์คุณชื่อ fire.ts ให้แก้บรรทัดบนเป็น: import { db } from "./fire";
 
-// --- Type Definitions for Model Viewer ---
+// --- Type Definitions ---
 declare global {
   namespace JSX {
     interface IntrinsicElements {
@@ -38,29 +39,32 @@ declare global {
   }
 }
 
+
 const graduateInfo = {
   name: "นายภูสิทธิ บุญวงศ์",
   faculty: "คณะวิศวกรรมศาสตร์",
   university: "มหาวิทยาลัยเทคโนโลยีราชมงคลพระนคร วิทยาเขตพระนครเหนือ",
   year: "ปีการศึกษา 2567",
   phone: "097-178-4484",
-  lineId: "phu20453.",
+  lineId: "phu20453. (มีจุดด้านหลังด้วยนะครับ)",
   imageProfile: "/graduate-profile2.JPG",
 };
+
 
 const schedule = [
   {
     type: "วันซ้อมย่อย",
     date: "1 มีนาคม 2569",
+    day: "SUN", 
     time: "16:00 น.",
     location: "ภายในมหาวิทยาลัย",
     note: "จอดรถได้ที่ บริษัท CPAC (ใกล้มหาวิทยาลัย)",
     imageMap: "/small.jpg",
   },
-
   {
     type: "วันซ้อมใหญ่",
     date: "11 มีนาคม 2569",
+    day: "WED", 
     time: "12:00 น.",
     location: "ภายในมหาวิทยาลัย",
     note: "ไม่มีที่จอดรถภายในมหาวิทยาลัย กรุณาใช้บริการรถสาธารณะ",
@@ -69,6 +73,7 @@ const schedule = [
   {
     type: "วันพิธีพระราชทานปริญญาบัตร",
     date: "13 มีนาคม 2569",
+    day: "FRI", 
     time: "12:00 น.",
     location: "ภายในมหาวิทยาลัย",
     note: "ไม่มีที่จอดรถภายในมหาวิทยาลัย กรุณาใช้บริการรถสาธารณะ",
@@ -76,7 +81,6 @@ const schedule = [
   },
 ];
 
-// --- Animation Variants ---
 const fadeInUp = {
   hidden: { opacity: 0, y: 40 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
@@ -87,7 +91,6 @@ const staggerContainer = {
   visible: { opacity: 1, transition: { staggerChildren: 0.2 } }
 };
 
-// 🔥 NEW: อนิเมชั่นคอมเมนต์แบบ "Brutal Pop" (เด้งแรงๆ)
 const commentVariant = {
   hidden: { opacity: 0, scale: 0.3, y: -50, rotate: -10 },
   visible: { 
@@ -100,7 +103,6 @@ const commentVariant = {
   exit: { opacity: 0, scale: 0.5, transition: { duration: 0.2 } }
 };
 
-// ✅ ฟังก์ชันแปลงเวลาจาก Firebase เป็นไทย
 const formatTimestamp = (timestamp: any) => {
   if (!timestamp) return "เมื่อสักครู่..."; 
   const date = timestamp.toDate(); 
@@ -128,7 +130,6 @@ export default function Home() {
     };
   }, []);
 
-  // Fetch Data
   useEffect(() => {
     const q = query(collection(db, "wishes"), orderBy("createdAt", "desc"));
     const unsubscribe = onSnapshot(q, (querySnapshot) => {
@@ -141,76 +142,103 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // --- Animation: เลือกแบบ "โยนหมวกปริญญา" ให้เป็นค่าเริ่มต้น (เปลี่ยนได้) ---
-  const fireFormalConfetti = () => {
+  // 🌟 NEW ANIMATION: "Golden Victory" (พลุทองฉลองชัย)
+  // แบบนี้จะดูแพง สมูท ไม่แปลกตาเหมือนอีโมจิครับ
+  const fireSmartConfetti = () => {
     const duration = 3 * 1000;
     const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 0 };
-    const scalar = 3; 
-    const hatShape = confetti.shapeFromText({ text: '🎓', scalar }); // รูปหมวก
-    const popShape = confetti.shapeFromText({ text: '🎉', scalar }); // รูปพลุ
+    // zIndex สูงๆ เพื่อให้ลอยทับทุกอย่างรวมถึง Header
+    const defaults = { startVelocity: 30, spread: 360, ticks: 100, zIndex: 9999 };
 
     const randomInRange = (min: number, max: number) => Math.random() * (max - min) + min;
 
     const interval: any = setInterval(function() {
       const timeLeft = animationEnd - Date.now();
+
       if (timeLeft <= 0) {
         return clearInterval(interval);
       }
-      const particleCount = 20 * (timeLeft / duration);
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.1, 0.9), y: Math.random() - 0.2 },
-        shapes: [hatShape, popShape], 
-        gravity: 0.8, 
-        scalar: 2
+
+      const particleCount = 50 * (timeLeft / duration);
+      
+      // ยิงจากซ้ายและขวา (ใช้รูปทรงมาตรฐาน สีทอง/ขาว/เงิน ดูแพง)
+      confetti({ 
+        ...defaults, 
+        particleCount, 
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+        colors: ['#FFD700', '#F0E68C', '#FFFFFF', '#EAB308'], // ทองเข้ม, ทองอ่อน, ขาว, เหลือง
+        shapes: ['circle', 'square'], // รูปทรงมาตรฐาน (ไม่แปลกตา)
+        gravity: 1.0, // ร่วงช้าลงนิดนึงให้ดูพริ้ว
+        scalar: 1.2, // ขนาดใหญ่กำลังดี
+        drift: 0.5, // ปลิวตามลมเล็กน้อย
+      });
+
+      confetti({ 
+        ...defaults, 
+        particleCount, 
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+        colors: ['#FFD700', '#F0E68C', '#FFFFFF', '#EAB308'],
+        shapes: ['circle', 'square'],
+        gravity: 1.0,
+        scalar: 1.2,
+        drift: -0.5,
       });
     }, 250);
   };
 
-  // ✅ ฟังก์ชันส่งข้อมูลพร้อม Popup ขอบคุณ
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputName || !inputMsg) return;
 
     setIsSubmitting(true);
     try {
-      // 1. ส่งเข้า Firebase
       await addDoc(collection(db, "wishes"), {
         name: inputName,
         msg: inputMsg,
         createdAt: serverTimestamp()
       });
 
-      // 2. ยิงพลุ
-      fireFormalConfetti();
+      // เรียกใช้อนิเมชั่นตัวใหม่
+      fireSmartConfetti();
 
-      // 3. แสดง Popup ขอบคุณ (SweetAlert2)
+      // 🌟 SWEET ALERT แบบพรีเมียม
       setTimeout(() => {
-    Swal.fire({
-    title: 'ขอบคุณจากใจครับ! ❤️',
-    text: 'ได้รับคำอวยพรแล้วครับ ขอให้ความสุขส่งผลกลับไปหาเช่นกันนะครับ',
-    icon: 'success',
-    confirmButtonText: 'ขอบคุณครับผม', // ปุ่มตอบรับว่า "You're welcome"
-    confirmButtonColor: '#0f172a',
-    background: '#ffffff',
-    iconColor: '#EAB308',
-  });
-}, 500);
+          Swal.fire({
+            title: '<strong>ขอบคุณจากใจครับ! ❤️</strong>',
+            html: '<span style="color:#555">ได้รับคำอวยพรแล้วครับ<br/>ขอให้ความสุขส่งผลกลับไปหาคุณเช่นกันนะครับ</span>',
+            icon: 'success',
+            // อนิเมชั่นตอนเด้ง
+            showClass: {
+                popup: 'animate__animated animate__fadeInDown'
+            },
+            hideClass: {
+                popup: 'animate__animated animate__fadeOutUp'
+            },
+            confirmButtonText: 'ด้วยความยินดี',
+            confirmButtonColor: '#0f172a',
+            background: '#ffffff',
+            // ฉากหลังเบลอๆ
+            backdrop: `
+                rgba(0,0,0,0.4)
+                left top
+                no-repeat
+            `,
+            width: 500,
+            padding: '2em',
+            iconColor: '#EAB308',
+            customClass: {
+              title: 'text-2xl font-serif',
+              confirmButton: 'rounded-full px-6 py-2'
+            }
+          });
+      }, 600); // รอให้พลุขึ้นแป๊บนึงค่อยเด้ง
 
-      // 4. ล้างค่า
       setInputName("");
       setInputMsg("");
 
     } catch (error) {
       console.error("Error adding document: ", error);
-      Swal.fire({
-        title: 'เกิดข้อผิดพลาด',
-        text: 'ส่งข้อความไม่สำเร็จ กรุณาลองใหม่',
-        icon: 'error',
-        confirmButtonColor: '#ef4444',
-      });
+      Swal.fire({ title: 'เกิดข้อผิดพลาด', text: 'ส่งข้อความไม่สำเร็จ กรุณาลองใหม่', icon: 'error', confirmButtonColor: '#ef4444' });
     }
     setIsSubmitting(false);
   };
@@ -289,8 +317,8 @@ export default function Home() {
                   on-load={() => setIsModelLoaded(true)} style={{ width: '100%', height: '100%', backgroundColor: 'transparent', position: 'relative', zIndex: 10 }}>
                     <div slot="ar-button" className="absolute bottom-4 right-4 bg-white text-slate-900 px-4 py-2 rounded-full font-bold text-sm shadow-lg cursor-pointer flex items-center gap-2 hover:bg-yellow-400 transition-colors"><Box size={16} /> View AR</div>
                   </model-viewer>
-              </motion.div>
-              <p className="text-center text-slate-500 text-sm mt-4">* สามารถหมุนดูโมเดล 3D หรือกดปุ่ม AR บนมือถือเพื่อวางรถบนพื้นจริงได้</p>
+              </motion.div> 
+              <p className="text-center text-slate-500 text-sm mt-4">* สามารถหมุนดูโมเดล 3D</p>
           </div>
       </section>
 
@@ -301,7 +329,9 @@ export default function Home() {
           {schedule.map((item, index) => (
             <motion.div variants={fadeInUp} key={index} className={`p-8 border-b border-slate-100 flex flex-col md:flex-row gap-6 hover:bg-slate-50 transition-colors group ${index === schedule.length - 1 ? 'border-none' : ''}`}>
               <div className="md:w-1/4 flex-shrink-0">
+                {/* 🛠️ ส่วนแสดงวัน: SUN/WED/FRI */}
                 <div className="bg-slate-100 text-slate-700 rounded p-4 text-center border-l-4 border-slate-900 group-hover:border-yellow-500 transition-colors duration-300">
+                  <span className="block text-xs font-bold bg-slate-800 text-yellow-400 rounded-full py-0.5 mb-2 mx-auto w-12 shadow-sm">{item.day}</span>
                   <span className="block text-sm font-bold uppercase tracking-wide text-slate-500">{item.date.split(' ')[1]} {item.date.split(' ')[2]}</span>
                   <span className="block text-4xl font-bold text-slate-900 my-1">{item.date.split(' ')[0]}</span>
                   <span className="block text-xs text-slate-400">2569</span>
@@ -337,7 +367,7 @@ export default function Home() {
                <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setSelectedImage("/1.jpg")} className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded shadow-sm hover:border-yellow-500 hover:text-yellow-600 transition-colors text-sm font-bold text-slate-700"><Map size={18} /> แผนที่ภายใน (1)</motion.button>
                <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} onClick={() => setSelectedImage("/2.jpg")} className="flex items-center justify-center gap-2 p-3 bg-white border border-slate-200 rounded shadow-sm hover:border-yellow-500 hover:text-yellow-600 transition-colors text-sm font-bold text-slate-700"><Map size={18} /> แผนที่ภายใน (2)</motion.button>
             </div>
-            <p className="mt-4 text-slate-600 text-sm leading-relaxed">* แนะนำให้ใช้บริการรถสาธารณะเนื่องจากการจราจรภายในมหาวิทยาลัยหนาแน่น</p>
+            <p className="mt-4 text-slate-600 text-sm leading-relaxed">* แนะนำให้ใช้บริการรถสาธารณะเนื่องจากไม่มีที่จอดรถภายในมหาวิทยาลัย</p>
           </div>
           <div className="flex flex-col justify-center">
             <div className="bg-white p-8 rounded-lg shadow-lg border-t-4 border-yellow-500 transform hover:-translate-y-2 transition-transform duration-300">
@@ -351,7 +381,7 @@ export default function Home() {
         </div>
       </motion.section>
 
-      {/* --- Guestbook Section (อัปเกรด) --- */}
+      {/* ... (Guestbook) ... */}
       <section id="wishes" className="max-w-3xl mx-auto px-6 py-20">
         <div className="text-center mb-10"><h2 className="text-3xl font-serif font-bold text-slate-900">ร่วมแสดงความยินดี</h2><p className="text-slate-500 mt-2">Congratulatory Message Registry</p></div>
         <motion.div initial={{ opacity: 0, scale: 0.9 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ duration: 0.5 }} className="bg-white border border-slate-200 shadow-xl rounded-sm p-8 md:p-12">
@@ -413,7 +443,7 @@ export default function Home() {
         </motion.div>
       </section>
 
-      <footer className="bg-slate-900 text-slate-400 py-8 text-center text-sm border-t border-slate-800"><p>© 2569 {graduateInfo.name} | {graduateInfo.faculty}</p></footer>
+      <footer className="bg-slate-900 text-slate-400 py-8 text-center text-sm border-t border-slate-800"><p>© 2569 {graduateInfo.name} </p></footer>
     </div>
   );
 }
